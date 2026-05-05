@@ -5,24 +5,28 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
 
-  const isProtected = pathname.startsWith("/dashboard") ||
-                      pathname.startsWith("/admin") ||
-                      pathname.startsWith("/user");
+  const isProtected = pathname.startsWith("/dashboard");
+  const isAdminOnly = pathname.startsWith("/dashboard/admin");
 
-  const isAdminOnly = pathname.startsWith("/admin") ||
-                      pathname.startsWith("/dashboard/admin");
-
+  //  Si no hay token → login
   if (isProtected && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (isAdminOnly && token) {
+  if (token) {
     try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      if (payload.role !== "admin") {
+      //  SOLO decodificar (NO verificar)
+      const payload = JSON.parse(
+        atob(token.split(".")[1])
+      );
+
+      // 🔐 proteger admin
+      if (isAdminOnly && payload.role !== "admin") {
         return NextResponse.redirect(new URL("/dashboard/user", request.url));
       }
-    } catch {
+
+    } catch (error) {
+      console.log("DECODE ERROR:", error);
       return NextResponse.redirect(new URL("/login", request.url));
     }
   }
@@ -31,5 +35,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/user/:path*"],
+  matcher: ["/dashboard/:path*"],
 };
